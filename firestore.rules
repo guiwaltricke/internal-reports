@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isNextFitEmail() {
+      return isAuthenticated() && request.auth.token.email.matches('.*@nextfit[.]com[.]br$');
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || (isAuthenticated() && isNextFitEmail());
+    }
+
+    match /reports/{reportId} {
+      // Owner can read, update, delete; visitors can read if public or whitelisted
+      allow read: if (isAuthenticated() && resource.data.authorId == request.auth.uid)
+                  || resource.data.security.accessType == 'public_link'
+                  || (isAuthenticated() && resource.data.security.allowedEmails.hasAny([request.auth.token.email]));
+      allow create: if isAuthenticated() && (request.resource.data.authorId == request.auth.uid || isNextFitEmail());
+      allow update, delete: if isAuthenticated() && resource.data.authorId == request.auth.uid;
+    }
+  }
+}

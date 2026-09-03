@@ -1,0 +1,7 @@
+{
+  "name": "Next Fit Reports",
+  "description": "Plataforma corporativa da Next Fit para hospedagem segura, gerenciamento e compartilhamento de relatórios HTML com autenticação Google Workspace e controle de privacidade.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

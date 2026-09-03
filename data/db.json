@@ -1,0 +1,15 @@
+{
+  "users": [
+    {
+      "id": "usr-default-guilherme",
+      "email": "guilherme@nextfit.com.br",
+      "name": "Guilherme",
+      "passwordHash": "a1a94625d8122cc98dc1f92039c0f905a093c434696f8c0959cb4692256d2bb8",
+      "salt": "caec702295ad85d75231cb1f7258a2a1",
+      "createdAt": "2026-09-03T12:07:14.590Z",
+      "avatarColor": "#2563eb"
+    }
+  ],
+  "reports": [],
+  "sessions": {}
+}

@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Perfil de usuário corporativo da Next Fit",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "domain": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "member"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "domain", "createdAt"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Relatório HTML privado ou compartilhado no Next Fit Reports",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "slug": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorEmail": { "type": "string" },
+        "authorName": { "type": "string" },
+        "htmlContent": { "type": "string" },
+        "fileSize": { "type": "number" },
+        "viewsCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "security": { "type": "object" },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["title", "slug", "authorId", "authorEmail", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "entity": "User",
+      "description": "Coleção de perfis de colaboradores"
+    },
+    "/reports/{reportId}": {
+      "entity": "Report",
+      "description": "Coleção de relatórios com controle de privacidade por usuário"
+    }
+  }
+}
