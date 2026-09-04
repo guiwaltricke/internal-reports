@@ -13,3 +13,20 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+/**
+ * Aliased in vite.config.ts to firebase-applet-config.json when AI Studio has
+ * injected it, and to firebase-applet-config.default.json otherwise.
+ */
+declare module 'virtual:firebase-applet-config' {
+  const config: {
+    apiKey?: string;
+    authDomain?: string;
+    projectId?: string;
+    storageBucket?: string;
+    messagingSenderId?: string;
+    appId?: string;
+    firestoreDatabaseId?: string;
+  };
+  export default config;
+}

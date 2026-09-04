@@ -22,7 +22,7 @@ import {
   onSnapshot,
   Timestamp,
 } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+import firebaseConfig from 'virtual:firebase-applet-config';
 import { Report, User } from '../types';
 
 // Helper to safely sanitize config strings and strip accidental quotes

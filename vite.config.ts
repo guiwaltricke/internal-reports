@@ -1,7 +1,15 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import fs from 'fs';
 import path from 'path';
 import {defineConfig} from 'vite';
+
+// firebase-applet-config.json is injected by AI Studio at runtime and is
+// gitignored, so it is absent on CI and on Vercel. Fall back to a committed file
+// of empty strings there; the real values then come from VITE_FIREBASE_* env vars.
+const appletConfigPath = ['firebase-applet-config.json', 'firebase-applet-config.default.json']
+  .map((f) => path.resolve(__dirname, f))
+  .find((p) => fs.existsSync(p))!;
 
 export default defineConfig(() => {
   return {
@@ -9,6 +17,7 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        'virtual:firebase-applet-config': appletConfigPath,
       },
     },
     server: {
