@@ -1,0 +1,8 @@
+# Local-only artifacts; the server persists to Firestore in production.
+data/
+dist/
+
+# Firebase Hosting / emulator config, unrelated to the Vercel deployment.
+firebase.json
+firebase-blueprint.json
+firestore.rules
