@@ -24,15 +24,26 @@ import {
 import firebaseConfig from '../../firebase-applet-config.json';
 import { Report, User } from '../types';
 
+// Resolve configuration from environment variables (e.g. GitHub Secrets/CI/CD) with fallback to json
+const activeFirebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfig.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfig.authDomain,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseConfig.projectId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfig.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfig.messagingSenderId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseConfig.appId,
+  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || firebaseConfig.firestoreDatabaseId,
+};
+
 // Initialize Firebase App instance
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const app = !getApps().length ? initializeApp(activeFirebaseConfig) : getApp();
 
 // Initialize Auth
 export const auth = getAuth(app);
 
 // Initialize Firestore with specific database ID if configured
-export const db = firebaseConfig.firestoreDatabaseId
-  ? initializeFirestore(app, {}, firebaseConfig.firestoreDatabaseId)
+export const db = activeFirebaseConfig.firestoreDatabaseId
+  ? initializeFirestore(app, {}, activeFirebaseConfig.firestoreDatabaseId)
   : getFirestore(app);
 
 // Configure Google Auth Provider for Next Fit Google Workspace
