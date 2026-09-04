@@ -197,7 +197,12 @@ export function ReportUploadModal({
         throw new Error(data.error || 'Falha ao hospedar relatório');
       }
 
-      onSuccess(data.report);
+      const fullReport: Report = {
+        ...data.report,
+        htmlContent,
+      };
+
+      onSuccess(fullReport);
       onClose();
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao publicar relatório');

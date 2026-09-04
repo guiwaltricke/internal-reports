@@ -4,24 +4,35 @@ service cloud.firestore {
     function isAuthenticated() {
       return request.auth != null;
     }
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
     function isNextFitEmail() {
-      return isAuthenticated() && request.auth.token.email.matches('.*@nextfit[.]com[.]br$');
+      return isAuthenticated() && (
+        request.auth.token.email.matches('.*@nextfit[.]com[.]br$') ||
+        request.auth.token.email == 'guilherme@nextfit.com.br'
+      );
+    }
+    function isOwner(reportData) {
+      return isAuthenticated() && (
+        reportData.ownerId == request.auth.uid ||
+        reportData.authorId == request.auth.uid ||
+        reportData.ownerEmail == request.auth.token.email ||
+        reportData.authorEmail == request.auth.token.email
+      );
     }
 
     match /users/{userId} {
-      allow read, write: if isOwner(userId) || (isAuthenticated() && isNextFitEmail());
+      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isNextFitEmail());
     }
 
     match /reports/{reportId} {
-      // Owner can read, update, delete; visitors can read if public or whitelisted
-      allow read: if (isAuthenticated() && resource.data.authorId == request.auth.uid)
+      allow read: if isNextFitEmail()
                   || resource.data.security.accessType == 'public_link'
-                  || (isAuthenticated() && resource.data.security.allowedEmails.hasAny([request.auth.token.email]));
-      allow create: if isAuthenticated() && (request.resource.data.authorId == request.auth.uid || isNextFitEmail());
-      allow update, delete: if isAuthenticated() && resource.data.authorId == request.auth.uid;
+                  || (isAuthenticated() && resource.data.security.allowedEmails.hasAny([request.auth.token.email]))
+                  || isOwner(resource.data);
+      allow create: if isNextFitEmail() || (isAuthenticated() && (
+        request.resource.data.ownerId == request.auth.uid || 
+        request.resource.data.authorId == request.auth.uid
+      ));
+      allow update, delete: if isNextFitEmail() || isOwner(resource.data);
     }
   }
 }

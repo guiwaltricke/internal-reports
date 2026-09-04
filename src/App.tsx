@@ -28,6 +28,8 @@ import {
   signOutFromFirebase,
   saveReportToFirestore,
   deleteReportFromFirestore,
+  getReportsFromFirestore,
+  subscribeReportsFromFirestore,
 } from './services/firebase';
 import { Report, User, AccessType } from './types';
 
@@ -51,6 +53,40 @@ export default function App() {
   // Initial load & Auth Listener
   useEffect(() => {
     let unsubscribeFirebase: (() => void) | undefined;
+    let unsubscribeFirestore: (() => void) | undefined;
+
+    async function loadReports(user: User | null) {
+      try {
+        // 1. First priority: Load from Firestore Cloud Database
+        const firestoreReports = await getReportsFromFirestore();
+        if (firestoreReports.length > 0) {
+          setReports(firestoreReports);
+          // Rehydrate server memory/disk with cloud reports
+          await api.syncBulk(firestoreReports);
+        } else {
+          // 2. Fallback to server reports
+          const serverData = await api.getReports();
+          if (serverData.reports && serverData.reports.length > 0) {
+            setReports(serverData.reports);
+            // Back-populate Firestore with server reports so they are never lost
+            for (const r of serverData.reports) {
+              await saveReportToFirestore(r).catch(() => {});
+            }
+          }
+        }
+
+        // 3. Listen to live changes in Firestore
+        if (unsubscribeFirestore) unsubscribeFirestore();
+        unsubscribeFirestore = subscribeReportsFromFirestore((liveReports) => {
+          if (liveReports.length > 0) {
+            setReports(liveReports);
+            api.syncBulk(liveReports);
+          }
+        });
+      } catch (err) {
+        console.error('Erro ao carregar relatórios:', err);
+      }
+    }
 
     async function init() {
       setIsLoading(true);
@@ -58,8 +94,7 @@ export default function App() {
         const user = await api.getCurrentUser();
         if (user) {
           setCurrentUser(user);
-          const data = await api.getReports();
-          setReports(data.reports);
+          await loadReports(user);
         } else {
           // Listen to Firebase auth state
           unsubscribeFirebase = onFirebaseAuthStateChanged(async (fbUser) => {
@@ -77,8 +112,7 @@ export default function App() {
                 };
                 const serverAuth = await api.syncGoogleUser(appUser, idToken);
                 setCurrentUser(serverAuth.user);
-                const data = await api.getReports();
-                setReports(data.reports);
+                await loadReports(serverAuth.user);
               } catch (e) {
                 console.error('Erro na sincronização Firebase/Google:', e);
               }
@@ -96,14 +130,21 @@ export default function App() {
 
     return () => {
       if (unsubscribeFirebase) unsubscribeFirebase();
+      if (unsubscribeFirestore) unsubscribeFirestore();
     };
   }, []);
 
   const handleLoginSuccess = async (user: User) => {
     setCurrentUser(user);
     try {
-      const data = await api.getReports();
-      setReports(data.reports);
+      const firestoreReports = await getReportsFromFirestore();
+      if (firestoreReports.length > 0) {
+        setReports(firestoreReports);
+        await api.syncBulk(firestoreReports);
+      } else {
+        const data = await api.getReports();
+        setReports(data.reports);
+      }
     } catch (e) {
       console.error('Erro ao buscar relatórios após login:', e);
     }
@@ -121,15 +162,23 @@ export default function App() {
   };
 
   const handleUploadSuccess = async (newReport: Report) => {
-    setReports((prev) => [newReport, ...prev]);
+    setReports((prev) => [newReport, ...prev.filter((r) => r.id !== newReport.id)]);
     setShareSuccessReport(newReport);
-    // Persist in cloud Firestore database
-    await saveReportToFirestore(newReport);
+    // Persist in cloud Firestore database with full html content
+    try {
+      await saveReportToFirestore(newReport, newReport.htmlContent);
+    } catch (err) {
+      console.error('Erro salvando no Firestore:', err);
+    }
   };
 
   const handleSecuritySaved = async (updated: Report) => {
     setReports((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
-    await saveReportToFirestore(updated);
+    try {
+      await saveReportToFirestore(updated);
+    } catch (err) {
+      console.error('Erro atualizando no Firestore:', err);
+    }
   };
 
   const handleDeleteReport = async (reportId: string) => {

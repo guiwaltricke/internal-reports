@@ -56,6 +56,7 @@ interface ReportRecord {
     allowPrint: boolean;
   };
   tags: string[];
+  htmlContent?: string;
 }
 
 interface DatabaseSchema {
@@ -411,6 +412,66 @@ app.get('/api/reports/:id', (req: Request, res: Response) => {
   return res.json({ report: safeReport });
 });
 
+// Bulk sync from Firestore to rehydrate ephemeral server storage
+app.post('/api/reports/sync-bulk', (req: Request, res: Response) => {
+  const { reports } = req.body;
+  if (!Array.isArray(reports)) {
+    return res.status(400).json({ error: 'reports array required' });
+  }
+
+  const db = loadDB();
+  let count = 0;
+
+  for (const r of reports) {
+    if (!r || !r.id) continue;
+    const existingIndex = db.reports.findIndex(x => x.id === r.id);
+    const record: ReportRecord = {
+      id: r.id,
+      slug: r.slug || r.id,
+      title: r.title || 'Sem título',
+      description: r.description || '',
+      ownerId: r.ownerId || r.authorId || '',
+      ownerEmail: r.ownerEmail || r.authorEmail || '',
+      ownerName: r.ownerName || r.authorName || 'Colaborador Next Fit',
+      fileSize: r.fileSize || 0,
+      createdAt: r.createdAt || new Date().toISOString(),
+      updatedAt: r.updatedAt || new Date().toISOString(),
+      viewsCount: r.viewsCount || 0,
+      lastViewedAt: r.lastViewedAt,
+      security: r.security || {
+        accessType: 'authenticated_only',
+        allowedEmails: [],
+        expiresAt: null,
+        active: true,
+        showWatermark: true,
+        allowDownload: true,
+        allowPrint: true
+      },
+      tags: r.tags || [],
+      htmlContent: r.htmlContent
+    };
+
+    if (existingIndex >= 0) {
+      db.reports[existingIndex] = { ...db.reports[existingIndex], ...record };
+    } else {
+      db.reports.push(record);
+    }
+
+    if (r.htmlContent && typeof r.htmlContent === 'string') {
+      const filePath = path.join(REPORTS_DIR, `${r.id}.html`);
+      try {
+        fs.writeFileSync(filePath, r.htmlContent, 'utf8');
+      } catch (e) {
+        console.error('Error writing report html in sync-bulk:', e);
+      }
+    }
+    count++;
+  }
+
+  saveDB(db);
+  return res.json({ success: true, synced: count });
+});
+
 // Report: Create / Upload
 app.post('/api/reports', (req: Request, res: Response) => {
   const { title, description, htmlContent, slug, security, tags } = req.body;
@@ -471,7 +532,8 @@ app.post('/api/reports', (req: Request, res: Response) => {
       allowDownload: security?.allowDownload !== undefined ? security.allowDownload : true,
       allowPrint: security?.allowPrint !== undefined ? security.allowPrint : true,
     },
-    tags: Array.isArray(tags) ? tags : ['IA', 'Report']
+    tags: Array.isArray(tags) ? tags : ['IA', 'Report'],
+    htmlContent,
   };
 
   db.reports.unshift(newReport);
@@ -680,6 +742,14 @@ app.get('/api/raw/:id', (req: Request, res: Response) => {
   }
 
   const filePath = path.join(REPORTS_DIR, `${report.id}.html`);
+  if (!fs.existsSync(filePath) && report.htmlContent) {
+    try {
+      fs.writeFileSync(filePath, report.htmlContent, 'utf8');
+    } catch (e) {
+      console.error('Erro ao recriar arquivo HTML a partir do cache:', e);
+    }
+  }
+
   if (!fs.existsSync(filePath)) {
     return res.status(404).send('Arquivo HTML não encontrado');
   }

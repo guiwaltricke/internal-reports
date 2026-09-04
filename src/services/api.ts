@@ -139,4 +139,16 @@ export const api = {
     });
     if (!res.ok) throw new Error('Erro ao excluir relatório');
   },
+
+  async syncBulk(reports: Report[]): Promise<void> {
+    try {
+      await fetch('/api/reports/sync-bulk', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ reports }),
+      });
+    } catch (e) {
+      console.warn('Sync bulk warning (server may be offline):', e);
+    }
+  },
 };
