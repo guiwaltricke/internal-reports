@@ -23,6 +23,23 @@ service cloud.firestore {
       allow read, write: if isAuthenticated() && (request.auth.uid == userId || isNextFitEmail());
     }
 
+    // Server-only collections, written exclusively by the Firebase Admin SDK in
+    // api/index.ts. serverUsers holds password hashes and salts and serverSessions
+    // holds live auth tokens, so no client may ever read them. reportContents holds
+    // the chunked HTML of reports too large to inline, gated by the same server.
+    // The Admin SDK bypasses these rules.
+    match /serverUsers/{userId} {
+      allow read, write: if false;
+    }
+
+    match /serverSessions/{token} {
+      allow read, write: if false;
+    }
+
+    match /reportContents/{document=**} {
+      allow read, write: if false;
+    }
+
     match /reports/{reportId} {
       allow read: if isNextFitEmail()
                   || resource.data.security.accessType == 'public_link'
